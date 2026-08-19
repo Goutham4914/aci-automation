@@ -1,0 +1,85 @@
+---
+stages:
+  - generate
+  - validate
+  - notify
+
+# ── Generate intent files from input CSVs ────────────────────────────────────
+generate-intent:
+  stage: generate
+  image: python:3.11-slim
+  before_script:
+    - pip install jinja2 --quiet
+  script:
+    - |
+      CHANGED_CSVS=$(git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA \
+        | grep '^inputs/.*\.csv$' || true)
+
+      if [ -z "$CHANGED_CSVS" ]; then
+        echo "No input CSVs changed, skipping generation."
+        exit 0
+      fi
+
+      for csv_file in $CHANGED_CSVS; do
+        echo "Generating intent from $csv_file"
+        python scripts/generate_intent.py "$csv_file"
+      done
+
+      git config user.email "gitlab-ci@your-org.com"
+      git config user.name "GitLab CI"
+      git add intent/
+      git diff --staged --quiet && echo "Nothing to commit." && exit 0
+      git commit -m "chore: auto-generate intent files from inputs [skip ci]"
+      git push "https://oauth2:${GITLAB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git" \
+        HEAD:$CI_COMMIT_REF_NAME
+  rules:
+    - if: '$CI_COMMIT_BRANCH != "main"'
+      changes:
+        - inputs/**/*.csv
+
+# ── Validate that CSVs are never committed without generated intent files ─────
+validate-intent-generated:
+  stage: validate
+  image: alpine:latest
+  script:
+    - |
+      CSV_CHANGED=$(git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA \
+        | grep '^inputs/.*\.csv$' || true)
+      INTENT_CHANGED=$(git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA \
+        | grep '^intent/' || true)
+
+      if [ -n "$CSV_CHANGED" ] && [ -z "$INTENT_CHANGED" ]; then
+        echo "ERROR: Input CSV changed but no intent files found in this commit."
+        echo "Either the CI generator has not run yet, or you pushed without running generate_intent.py."
+        exit 1
+      fi
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - inputs/**/*.csv
+        - intent/**/*
+
+# ── Notify MR that intent files are ready for review ─────────────────────────
+notify-mr:
+  stage: notify
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache curl --quiet
+  script:
+    - |
+      INTENT_FILES=$(git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA \
+        | grep '^intent/' | tr '\n' ', ' || true)
+
+      if [ -z "$INTENT_FILES" ]; then
+        exit 0
+      fi
+
+      curl -s -X POST \
+        -H "PRIVATE-TOKEN: ${GITLAB_TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d "{\"body\": \"Intent files generated and ready for review:\n\`\`\`\n${INTENT_FILES}\n\`\`\`\nOnce approved and merged, launch the AWX job template with the relevant \`intent_file\` extra var.\"}" \
+        "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/merge_requests/${CI_MERGE_REQUEST_IID}/notes" || true
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - intent/**/*

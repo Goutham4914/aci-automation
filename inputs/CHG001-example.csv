@@ -1,0 +1,8 @@
+object_type,tenant,environment,bd_name,ap_name,epg_name,vrf,gateway,scope,bd,description
+bd,PROD-TENANT,prod,WEB-BD,,,,10.1.1.1/24,private,,Web tier bridge domain
+bd,PROD-TENANT,prod,WEB-BD,,,,10.1.1.128/25,private,,Web tier bridge domain secondary subnet
+bd,PROD-TENANT,prod,DB-BD,,,,10.1.2.1/24,private,,Database tier bridge domain
+bd,PROD-TENANT,prod,APP-BD,,,,10.1.3.1/24,private,,Application tier bridge domain
+ap,PROD-TENANT,prod,,PROD-APP,,,,,, Production application profile
+epg,PROD-TENANT,prod,,PROD-APP,WEB-EPG,,,,,WEB-BD,Web tier EPG
+epg,PROD-TENANT,prod,,PROD-APP,DB-EPG,,,,,DB-BD,Database tier EPG

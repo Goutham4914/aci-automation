@@ -1,0 +1,6 @@
+---
+epg:
+  name: WEB-EPG
+  bd: WEB-BD
+  state: present
+  description: "Web tier EPG"

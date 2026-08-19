@@ -1,0 +1,5 @@
+---
+aci_validate_certs: false
+aci_output_level: info
+force_state: ""       # set to "absent" by rollback.yml only
+target_file: ""       # empty = full tenant reconciliation

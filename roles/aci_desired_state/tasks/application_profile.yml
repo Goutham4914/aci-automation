@@ -1,0 +1,23 @@
+---
+- name: Find AP intent files
+  ansible.builtin.find:
+    paths: "{{ tenant_dir }}/application_profiles"
+    patterns: "profile.yml"
+    recurse: true
+  register: ap_files
+  delegate_to: localhost
+  when: target_file | length == 0
+
+- name: Set AP file list (scoped)
+  ansible.builtin.set_fact:
+    ap_files:
+      files:
+        - path: "{{ playbook_dir }}/../{{ target_file }}"
+  when: target_file | length > 0 and scoped_type == 'application_profiles'
+
+- name: Apply each AP
+  ansible.builtin.include_tasks: _apply_ap.yml
+  loop: "{{ ap_files.files | map(attribute='path') | list }}"
+  loop_control:
+    loop_var: ap_file
+  when: ap_files.files | length > 0

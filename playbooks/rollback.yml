@@ -1,0 +1,27 @@
+---
+# Sets state: absent on the object defined in intent_file.
+# Triggered manually or as the on-failure branch of an AWX workflow.
+# Passed as AWX extra vars:
+#   tenant_path : relative path to tenant dir
+#   intent_file : specific object file to roll back (required)
+#   change_id   : change ticket reference
+
+- name: Rollback ACI intent
+  hosts: "{{ deploy_env }}_apic"
+  gather_facts: false
+
+  pre_tasks:
+    - name: Load tenant manifest
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../{{ tenant_path }}/tenant.yml"
+
+    - name: Load intent file
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../{{ intent_file }}"
+
+  roles:
+    - role: aci_desired_state
+      vars:
+        tenant_dir: "{{ playbook_dir }}/../{{ tenant_path }}"
+        target_file: "{{ intent_file }}"
+        force_state: absent

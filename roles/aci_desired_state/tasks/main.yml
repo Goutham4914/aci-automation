@@ -1,0 +1,45 @@
+---
+# Tenant always runs first — dependency ordering enforced here.
+- import_tasks: tenant.yml
+
+- name: Determine scope
+  ansible.builtin.set_fact:
+    # Extract the object type folder name from the file path
+    # e.g. intent/prod/tenants/PROD-TENANT/bridge_domains/WEB-BD.yml → bridge_domains
+    scoped_type: >-
+      {{ target_file | regex_search('/(bridge_domains|application_profiles|contracts|epgs)/') | regex_replace('/', '') }}
+  when: target_file | length > 0
+
+# ── Scoped deploy (single file) ───────────────────────────────────────────────
+- name: Deploy bridge domain (scoped)
+  import_tasks: bridge_domain.yml
+  when: target_file | length > 0 and scoped_type == 'bridge_domains'
+
+- name: Deploy application profile (scoped)
+  import_tasks: application_profile.yml
+  when: target_file | length > 0 and scoped_type == 'application_profiles'
+
+- name: Deploy EPG (scoped)
+  import_tasks: epg.yml
+  when: target_file | length > 0 and scoped_type == 'epgs'
+
+- name: Deploy contract (scoped)
+  import_tasks: contract.yml
+  when: target_file | length > 0 and scoped_type == 'contracts'
+
+# ── Full tenant reconciliation (no target_file set) ───────────────────────────
+- name: Reconcile all bridge domains
+  import_tasks: bridge_domain.yml
+  when: target_file | length == 0
+
+- name: Reconcile all application profiles
+  import_tasks: application_profile.yml
+  when: target_file | length == 0
+
+- name: Reconcile all EPGs
+  import_tasks: epg.yml
+  when: target_file | length == 0
+
+- name: Reconcile all contracts
+  import_tasks: contract.yml
+  when: target_file | length == 0

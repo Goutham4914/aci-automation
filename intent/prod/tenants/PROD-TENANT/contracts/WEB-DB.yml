@@ -1,0 +1,10 @@
+---
+contract:
+  name: WEB-DB
+  scope: tenant
+  state: present
+  description: "Contract between web and DB tiers"
+  subjects:
+    - name: WEB-DB-subj
+      filters:
+        - name: WEB-DB-filter

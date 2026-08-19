@@ -1,0 +1,5 @@
+---
+ap:
+  name: PROD-APP
+  state: present
+  description: "Production application profile"

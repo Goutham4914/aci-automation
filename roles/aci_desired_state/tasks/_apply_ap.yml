@@ -1,0 +1,17 @@
+---
+- name: Load AP vars from file
+  ansible.builtin.include_vars:
+    file: "{{ ap_file }}"
+    name: ap_data
+
+- name: Configure AP - {{ ap_data.ap.name }}
+  cisco.aci.aci_ap:
+    host:           "{{ ansible_host }}"
+    username:       "{{ ansible_user }}"
+    password:       "{{ ansible_password }}"
+    validate_certs: "{{ aci_validate_certs }}"
+    output_level:   "{{ aci_output_level }}"
+    tenant:         "{{ tenant.name }}"
+    ap:             "{{ ap_data.ap.name }}"
+    description:    "{{ ap_data.ap.description | default(omit) }}"
+    state:          "{{ force_state if force_state else ap_data.ap.state | default('present') }}"

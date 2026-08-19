@@ -1,0 +1,11 @@
+---
+bd:
+  name: {{ bd_name }}
+  vrf: {{ vrf }}
+  state: present
+  description: "{{ description }}"
+  subnets:
+{% for subnet in subnets %}
+    - gateway: {{ subnet.gateway }}
+      scope: {{ subnet.scope }}
+{% endfor %}

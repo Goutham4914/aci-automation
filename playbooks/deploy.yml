@@ -1,0 +1,22 @@
+---
+# Passed as AWX extra vars:
+#   tenant_path : relative path to tenant dir  e.g. intent/prod/tenants/PROD-TENANT
+#   intent_file : (optional) relative path to a specific object file
+#                 e.g. intent/prod/tenants/PROD-TENANT/bridge_domains/WEB-BD.yml
+#                 Leave blank to reconcile the full tenant.
+#   change_id   : change ticket reference e.g. CHG001 (used for logging only)
+
+- name: Deploy ACI intent
+  hosts: "{{ deploy_env }}_apic"
+  gather_facts: false
+
+  pre_tasks:
+    - name: Load tenant manifest
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../{{ tenant_path }}/tenant.yml"
+
+  roles:
+    - role: aci_desired_state
+      vars:
+        tenant_dir: "{{ playbook_dir }}/../{{ tenant_path }}"
+        target_file: "{{ intent_file | default('') }}"

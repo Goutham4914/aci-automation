@@ -1,0 +1,34 @@
+---
+# Run before deploy in an AWX workflow to validate intent file structure.
+# Passed as AWX extra vars:
+#   tenant_path : relative path to tenant dir
+#   intent_file : (optional) specific object file to validate
+
+- name: Validate ACI intent files
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Load tenant manifest
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../{{ tenant_path }}/tenant.yml"
+
+    - name: Assert tenant name is defined
+      ansible.builtin.assert:
+        that:
+          - tenant.name is defined
+          - tenant.name | length > 0
+        fail_msg: "tenant.name is missing in tenant.yml"
+
+    - name: Validate specific intent file if provided
+      when: intent_file is defined and intent_file | length > 0
+      block:
+        - name: Load intent file
+          ansible.builtin.include_vars:
+            file: "{{ playbook_dir }}/../{{ intent_file }}"
+            name: intent_data
+
+        - name: Assert object key exists
+          ansible.builtin.assert:
+            that: intent_data.bd is defined or intent_data.ap is defined or intent_data.epg is defined or intent_data.contract is defined
+            fail_msg: "Intent file does not contain a recognised object key (bd, ap, epg, contract)"

@@ -1,0 +1,23 @@
+---
+- name: Find BD intent files
+  ansible.builtin.find:
+    paths: "{{ tenant_dir }}/bridge_domains"
+    patterns: "*.yml"
+  register: bd_files
+  delegate_to: localhost
+  when: target_file | length == 0
+
+# Scoped: point directly at the single file passed in
+- name: Set BD file list (scoped)
+  ansible.builtin.set_fact:
+    bd_files:
+      files:
+        - path: "{{ playbook_dir }}/../{{ target_file }}"
+  when: target_file | length > 0 and scoped_type == 'bridge_domains'
+
+- name: Apply each BD
+  ansible.builtin.include_tasks: _apply_bd.yml
+  loop: "{{ bd_files.files | map(attribute='path') | list }}"
+  loop_control:
+    loop_var: bd_file
+  when: bd_files.files | length > 0

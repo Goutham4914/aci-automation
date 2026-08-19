@@ -1,0 +1,32 @@
+---
+- name: Load BD vars from file
+  ansible.builtin.include_vars:
+    file: "{{ bd_file }}"
+    name: bd_data
+
+- name: Configure BD - {{ bd_data.bd.name }}
+  cisco.aci.aci_bd:
+    host:           "{{ ansible_host }}"
+    username:       "{{ ansible_user }}"
+    password:       "{{ ansible_password }}"
+    validate_certs: "{{ aci_validate_certs }}"
+    output_level:   "{{ aci_output_level }}"
+    tenant:         "{{ tenant.name }}"
+    bd:             "{{ bd_data.bd.name }}"
+    vrf:            "{{ bd_data.bd.vrf }}"
+    description:    "{{ bd_data.bd.description | default(omit) }}"
+    state:          "{{ force_state if force_state else bd_data.bd.state | default('present') }}"
+
+- name: Configure subnets for BD - {{ bd_data.bd.name }}
+  cisco.aci.aci_bd_subnet:
+    host:           "{{ ansible_host }}"
+    username:       "{{ ansible_user }}"
+    password:       "{{ ansible_password }}"
+    validate_certs: "{{ aci_validate_certs }}"
+    output_level:   "{{ aci_output_level }}"
+    tenant:         "{{ tenant.name }}"
+    bd:             "{{ bd_data.bd.name }}"
+    gateway:        "{{ item.gateway }}"
+    scope:          "{{ item.scope | default('private') }}"
+    state:          "{{ force_state if force_state else bd_data.bd.state | default('present') }}"
+  loop: "{{ bd_data.bd.subnets | default([]) }}"
