@@ -1,0 +1,33 @@
+---
+static_path:
+  description: "{{ description }}"
+
+  vlan_pool:
+    name: {{ vlan_pool_name }}
+    alloc_mode: static
+    encap_blocks:
+      - from: vlan-{{ vlan_from }}
+        to: vlan-{{ vlan_to }}
+
+  domain:
+    name: {{ domain_name }}
+    type: phys
+
+  aep:
+    name: {{ aep_name }}
+
+  interface_policy_group:
+    name: {{ server_name }}-IPG
+    lag_type: leaf
+    link_level_policy: {{ link_level_policy }}
+    cdp_policy: {{ cdp_policy }}
+    lldp_policy: {{ lldp_policy }}
+
+  tenant: {{ tenant }}
+  ap: {{ ap }}
+  epg: {{ epg }}
+  pod: {{ pod }}
+  leaf: {{ leaf }}
+  interface: {{ interface }}
+  encap: vlan-{{ encap_vlan }}
+  mode: {{ mode }}

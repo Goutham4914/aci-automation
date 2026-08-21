@@ -1,0 +1,107 @@
+---
+# UC1 — Full interface policy stack + EPG static path binding
+# Expects static_path var loaded from intent file in deploy.yml pre_tasks
+
+- name: Configure VLAN pool
+  cisco.aci.aci_vlan_pool:
+    host:           "{{ ansible_host }}"
+    username:       "{{ ansible_user }}"
+    password:       "{{ ansible_password }}"
+    validate_certs: "{{ aci_validate_certs }}"
+    output_level:   "{{ aci_output_level }}"
+    pool:           "{{ static_path.vlan_pool.name }}"
+    pool_allocation_mode: "{{ static_path.vlan_pool.alloc_mode }}"
+    state: present
+
+- name: Configure VLAN pool encap blocks
+  cisco.aci.aci_vlan_pool_encap_block:
+    host:           "{{ ansible_host }}"
+    username:       "{{ ansible_user }}"
+    password:       "{{ ansible_password }}"
+    validate_certs: "{{ aci_validate_certs }}"
+    output_level:   "{{ aci_output_level }}"
+    pool:           "{{ static_path.vlan_pool.name }}"
+    pool_allocation_mode: "{{ static_path.vlan_pool.alloc_mode }}"
+    block_start:    "{{ item.from }}"
+    block_end:      "{{ item.to }}"
+    state: present
+  loop: "{{ static_path.vlan_pool.encap_blocks }}"
+
+- name: Configure physical domain
+  cisco.aci.aci_domain:
+    host:           "{{ ansible_host }}"
+    username:       "{{ ansible_user }}"
+    password:       "{{ ansible_password }}"
+    validate_certs: "{{ aci_validate_certs }}"
+    output_level:   "{{ aci_output_level }}"
+    domain:         "{{ static_path.domain.name }}"
+    domain_type:    "{{ static_path.domain.type }}"
+    state: present
+
+- name: Bind domain to VLAN pool
+  cisco.aci.aci_domain_to_vlan_pool:
+    host:           "{{ ansible_host }}"
+    username:       "{{ ansible_user }}"
+    password:       "{{ ansible_password }}"
+    validate_certs: "{{ aci_validate_certs }}"
+    output_level:   "{{ aci_output_level }}"
+    domain:         "{{ static_path.domain.name }}"
+    domain_type:    "{{ static_path.domain.type }}"
+    pool:           "{{ static_path.vlan_pool.name }}"
+    pool_allocation_mode: "{{ static_path.vlan_pool.alloc_mode }}"
+    state: present
+
+- name: Configure AEP
+  cisco.aci.aci_aep:
+    host:           "{{ ansible_host }}"
+    username:       "{{ ansible_user }}"
+    password:       "{{ ansible_password }}"
+    validate_certs: "{{ aci_validate_certs }}"
+    output_level:   "{{ aci_output_level }}"
+    aep:            "{{ static_path.aep.name }}"
+    state: present
+
+- name: Bind AEP to domain
+  cisco.aci.aci_aep_to_domain:
+    host:           "{{ ansible_host }}"
+    username:       "{{ ansible_user }}"
+    password:       "{{ ansible_password }}"
+    validate_certs: "{{ aci_validate_certs }}"
+    output_level:   "{{ aci_output_level }}"
+    aep:            "{{ static_path.aep.name }}"
+    domain:         "{{ static_path.domain.name }}"
+    domain_type:    "{{ static_path.domain.type }}"
+    state: present
+
+- name: Configure interface policy group (individual port)
+  cisco.aci.aci_interface_policy_leaf_policy_group:
+    host:           "{{ ansible_host }}"
+    username:       "{{ ansible_user }}"
+    password:       "{{ ansible_password }}"
+    validate_certs: "{{ aci_validate_certs }}"
+    output_level:   "{{ aci_output_level }}"
+    policy_group:   "{{ static_path.interface_policy_group.name }}"
+    lag_type:       "{{ static_path.interface_policy_group.lag_type }}"
+    link_level_policy: "{{ static_path.interface_policy_group.link_level_policy }}"
+    cdp_policy:     "{{ static_path.interface_policy_group.cdp_policy }}"
+    lldp_policy:    "{{ static_path.interface_policy_group.lldp_policy }}"
+    aep:            "{{ static_path.aep.name }}"
+    state: present
+
+- name: Configure EPG static path binding
+  cisco.aci.aci_static_binding_to_epg:
+    host:           "{{ ansible_host }}"
+    username:       "{{ ansible_user }}"
+    password:       "{{ ansible_password }}"
+    validate_certs: "{{ aci_validate_certs }}"
+    output_level:   "{{ aci_output_level }}"
+    tenant:         "{{ static_path.tenant }}"
+    ap:             "{{ static_path.ap }}"
+    epg:            "{{ static_path.epg }}"
+    pod_id:         "{{ static_path.pod }}"
+    leafs:          "{{ static_path.leaf }}"
+    interface:      "{{ static_path.interface }}"
+    encap:          "{{ static_path.encap }}"
+    interface_mode: "{{ static_path.mode }}"
+    interface_type: switch_port
+    state: present

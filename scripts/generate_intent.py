@@ -6,14 +6,19 @@ Usage:
     python scripts/generate_intent.py inputs/CHG001-new-bds.csv
 
 Supported object types (determined by the 'object_type' column in the CSV):
-    bd  - Bridge Domain
-    ap  - Application Profile
-    epg - Endpoint Group
+    bd          - Bridge Domain
+    ap          - Application Profile
+    epg         - Endpoint Group
+    static_path - Static port binding + full interface policy stack (UC1)
 
 CSV columns:
-    object_type, tenant, environment, bd_name/ap_name/epg_name,
+    object_type, tenant, environment, bd_name/ap_name/epg_name/server_name,
     vrf (bd only), gateway (bd only), scope (bd only),
-    ap_name (epg only), bd (epg only), description
+    ap_name (epg only), bd (epg only),
+    vlan_pool_name, vlan_from, vlan_to, domain_name, aep_name,
+    link_level_policy, cdp_policy, lldp_policy,
+    ap, epg, pod, leaf, interface, encap_vlan, mode (static_path only),
+    description
 """
 
 import csv
@@ -101,10 +106,27 @@ def generate_epgs(rows):
         print(f"  Generated: {output_file.relative_to(REPO_ROOT)}")
 
 
+def generate_static_paths(rows):
+    env = Environment(loader=FileSystemLoader(TEMPLATES_DIR))
+    template = env.get_template("static_path.yml.j2")
+
+    for row in rows:
+        output_dir = (
+            INTENT_DIR / row["environment"] / "tenants" / row["tenant"] / "static_paths"
+        )
+        output_dir.mkdir(parents=True, exist_ok=True)
+        # File named after server + interface e.g. SERVER01-eth1-1.yml
+        iface_slug = row["interface"].replace("/", "-")
+        output_file = output_dir / f"{row['server_name']}-{iface_slug}.yml"
+        output_file.write_text(template.render(**row))
+        print(f"  Generated: {output_file.relative_to(REPO_ROOT)}")
+
+
 GENERATORS = {
-    "bd":  generate_bds,
-    "ap":  generate_aps,
-    "epg": generate_epgs,
+    "bd":          generate_bds,
+    "ap":          generate_aps,
+    "epg":         generate_epgs,
+    "static_path": generate_static_paths,
 }
 
 

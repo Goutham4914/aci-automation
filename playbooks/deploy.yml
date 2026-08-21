@@ -1,10 +1,21 @@
 ---
-# Passed as AWX extra vars:
-#   tenant_path : relative path to tenant dir  e.g. intent/prod/tenants/PROD-TENANT
-#   intent_file : (optional) relative path to a specific object file
-#                 e.g. intent/prod/tenants/PROD-TENANT/bridge_domains/WEB-BD.yml
-#                 Leave blank to reconcile the full tenant.
-#   change_id   : change ticket reference e.g. CHG001 (used for logging only)
+# Single entry point for all ACI deployments.
+# AWX always runs this playbook — deploy_mode controls what gets deployed.
+#
+# AWX extra vars:
+#   deploy_mode : main | static_path | vpc | l2out | l3out
+#   deploy_env  : lab | prod
+#   tenant_path : e.g. intent/prod/tenants/PROD-TENANT
+#   intent_file : e.g. intent/prod/tenants/PROD-TENANT/bridge_domains/WEB-BD.yml
+#                 (required for scoped deploys, optional for deploy_mode=main full reconcile)
+#   change_id   : e.g. CHG001 (audit reference only)
+#
+# deploy_mode values:
+#   main        → tenant objects (BD, AP, EPG, contract) — scoped or full tenant reconcile
+#   static_path → UC1: attach server, full interface policy stack + static path binding
+#   vpc         → UC2: vPC port channel between server and two leaf switches
+#   l2out       → UC3: full L2Out configuration
+#   l3out       → UC4: full L3Out configuration
 
 - name: Deploy ACI intent
   hosts: "{{ deploy_env }}_apic"
@@ -15,8 +26,14 @@
       ansible.builtin.include_vars:
         file: "{{ playbook_dir }}/../{{ tenant_path }}/tenant.yml"
 
+    - name: Load intent file
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../{{ intent_file }}"
+      when: intent_file | default('') | length > 0
+
   roles:
     - role: aci_desired_state
       vars:
         tenant_dir: "{{ playbook_dir }}/../{{ tenant_path }}"
         target_file: "{{ intent_file | default('') }}"
+        deploy_mode: "{{ deploy_mode | default('main') }}"

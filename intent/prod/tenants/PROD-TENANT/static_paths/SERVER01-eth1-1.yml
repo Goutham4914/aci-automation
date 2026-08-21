@@ -1,0 +1,34 @@
+---
+static_path:
+  description: "SERVER01 eth1/1 on leaf 101"
+
+  vlan_pool:
+    name: PROD-VLAN-POOL
+    alloc_mode: static
+    encap_blocks:
+      - from: vlan-100
+        to: vlan-200
+
+  domain:
+    name: PROD-PHY-DOMAIN
+    type: phys
+
+  aep:
+    name: PROD-AEP
+
+  interface_policy_group:
+    name: SERVER01-IPG
+    lag_type: leaf              # leaf = individual port (not port channel)
+    link_level_policy: 10G-AUTO
+    cdp_policy: CDP-ON
+    lldp_policy: LLDP-ON
+
+  # EPG static binding
+  tenant: PROD-TENANT
+  ap: PROD-APP
+  epg: WEB-EPG
+  pod: 1
+  leaf: 101
+  interface: eth1/1
+  encap: vlan-100
+  mode: regular                 # regular (trunk), native (access untagged), untagged

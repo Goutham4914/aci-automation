@@ -1,45 +1,58 @@
 ---
-# Tenant always runs first — dependency ordering enforced here.
-- import_tasks: tenant.yml
+# Routes to the correct task set based on deploy_mode passed from AWX.
+# deploy_mode=main runs tenant object tasks (BD, AP, EPG, contract).
+# All other modes run their own self-contained task file.
 
-- name: Determine scope
-  ansible.builtin.set_fact:
-    # Extract the object type folder name from the file path
-    # e.g. intent/prod/tenants/PROD-TENANT/bridge_domains/WEB-BD.yml → bridge_domains
-    scoped_type: >-
-      {{ target_file | regex_search('/(bridge_domains|application_profiles|contracts|epgs)/') | regex_replace('/', '') }}
-  when: target_file | length > 0
+# ── UC1: Static path binding ──────────────────────────────────────────────────
+- import_tasks: static_path.yml
+  when: deploy_mode == 'static_path'
 
-# ── Scoped deploy (single file) ───────────────────────────────────────────────
-- name: Deploy bridge domain (scoped)
-  import_tasks: bridge_domain.yml
-  when: target_file | length > 0 and scoped_type == 'bridge_domains'
+# ── UC2: vPC port channel ─────────────────────────────────────────────────────
+- import_tasks: vpc.yml
+  when: deploy_mode == 'vpc'
 
-- name: Deploy application profile (scoped)
-  import_tasks: application_profile.yml
-  when: target_file | length > 0 and scoped_type == 'application_profiles'
+# ── UC3: L2Out ────────────────────────────────────────────────────────────────
+- import_tasks: l2out.yml
+  when: deploy_mode == 'l2out'
 
-- name: Deploy EPG (scoped)
-  import_tasks: epg.yml
-  when: target_file | length > 0 and scoped_type == 'epgs'
+# ── UC4: L3Out ────────────────────────────────────────────────────────────────
+- import_tasks: l3out.yml
+  when: deploy_mode == 'l3out'
 
-- name: Deploy contract (scoped)
-  import_tasks: contract.yml
-  when: target_file | length > 0 and scoped_type == 'contracts'
+# ── Tenant objects: BD, AP, EPG, contract ────────────────────────────────────
+- block:
+    - import_tasks: tenant.yml
 
-# ── Full tenant reconciliation (no target_file set) ───────────────────────────
-- name: Reconcile all bridge domains
-  import_tasks: bridge_domain.yml
-  when: target_file | length == 0
+    - name: Determine scoped object type
+      ansible.builtin.set_fact:
+        scoped_type: >-
+          {{ target_file | regex_search('/(bridge_domains|application_profiles|contracts|epgs)/') | regex_replace('/', '') }}
+      when: target_file | length > 0
 
-- name: Reconcile all application profiles
-  import_tasks: application_profile.yml
-  when: target_file | length == 0
+    # Scoped deploy — single file
+    - import_tasks: bridge_domain.yml
+      when: target_file | length > 0 and scoped_type == 'bridge_domains'
 
-- name: Reconcile all EPGs
-  import_tasks: epg.yml
-  when: target_file | length == 0
+    - import_tasks: application_profile.yml
+      when: target_file | length > 0 and scoped_type == 'application_profiles'
 
-- name: Reconcile all contracts
-  import_tasks: contract.yml
-  when: target_file | length == 0
+    - import_tasks: epg.yml
+      when: target_file | length > 0 and scoped_type == 'epgs'
+
+    - import_tasks: contract.yml
+      when: target_file | length > 0 and scoped_type == 'contracts'
+
+    # Full tenant reconciliation — no intent_file set
+    - import_tasks: bridge_domain.yml
+      when: target_file | length == 0
+
+    - import_tasks: application_profile.yml
+      when: target_file | length == 0
+
+    - import_tasks: epg.yml
+      when: target_file | length == 0
+
+    - import_tasks: contract.yml
+      when: target_file | length == 0
+
+  when: deploy_mode == 'main' or deploy_mode is not defined
